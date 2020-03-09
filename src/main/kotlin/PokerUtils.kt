@@ -45,7 +45,7 @@ enum class PokerPlay {
 }
 
 enum class Type {
-    DRAW_CARDS, GET_HAND, UPDATE, CHAT, SUBMIT_HAND, RENAME
+    DRAW_CARDS, GET_HAND, UPDATE, CHAT, SUBMIT_HAND, RENAME, ANTE, BET_MONEY, MONEY_CHECK
 }
 
 data class CardType(val type: Type, val any: Any) {

@@ -15,6 +15,9 @@ suspend fun DefaultWebSocketSession.send(type: CardType) = send(type.toFrameJson
 suspend fun DefaultWebSocketSession.sendHand(cards: List<Card>) = send(CardType(Type.GET_HAND, cards))
 suspend fun DefaultWebSocketSession.drawCards(amount: Int) = send(CardType(Type.DRAW_CARDS, amount))
 suspend fun DefaultWebSocketSession.submitHand(cards: List<Card>) = send(CardType(Type.SUBMIT_HAND, cards))
+suspend fun DefaultWebSocketSession.ante() = send(CardType(Type.ANTE, true))
+suspend fun DefaultWebSocketSession.betMoney(money: Double) = send(CardType(Type.BET_MONEY, money))
+suspend fun DefaultWebSocketSession.moneyCheck() = send(CardType(Type.MONEY_CHECK, true))
 
 fun printr(s: String) = print("$s\r")
 
@@ -59,6 +62,12 @@ fun main() = runBlocking {
         println("Players:\n${getMessage()<List<String>>()?.joinToString("\n") { it.color(Random.nextColor().rgb) }}")
 
         gameLoop@ while (isActive) {
+            ante()
+            val ant = animateString("Waiting on other players") { getMessage().let { if (it.type == Type.ANTE) it<String>() else "" } }
+            println(ant)
+            val anted = animateString("Waiting on other players") { getMessage().let { if (it.type == Type.CHAT) it<String>() else "" } }
+            println(anted)
+
             hand.clear()
             println("-".repeat(50).color(Random.nextColor().rgb))
             drawCards(5)
@@ -67,6 +76,10 @@ fun main() = runBlocking {
             sendHand(hand)
             val pokerHand = getMessage()<PokerHand>()
             println(pokerHand?.printHand(hand))
+
+            input("Do you want to bet any ${"money".color(Color.GREEN.rgb)}?").toDoubleOrNull()?.let { betMoney(it) }
+            val bet = getMessage()<String>()
+            println(bet)
 
             println(
                 "Choose what ${"cards".color(Color.ORANGE.rgb)} to ${"discard".color(Color.RED.rgb)} via ${"index".color(Color.YELLOW.rgb)}. " +
@@ -97,12 +110,19 @@ fun main() = runBlocking {
             val winnerIs = animateString("Waiting on other players") { getMessage().let { if (it.type == Type.CHAT) it<String>() else "" } }
             println(winnerIs?.frame(FrameType.BOX.copy(top = "You Had: ${pokerHand2?.stringName}"))?.color(getColorLevel(pokerHand2)))
 
-            val again = "Would you like to keep playing? (${"Y".color(Color.GREEN.rgb)})es/(${"N".color(Color.RED.rgb)})o?"
-            var playing: Continue?
-            do playing = Continue(input(again, scan)) while (playing == null)
-            when (playing) {
-                Continue.YES -> continue@gameLoop
-                Continue.NO -> break@gameLoop
+            moneyCheck()
+            val check = getMessage()<Double>()
+            if (check ?: 0.0 < 5.0) {
+                println("You do not have enough ${"money".color(Color.GREEN.rgb)} to continue playing. You have \$$check.")
+                break@gameLoop
+            } else {
+                val again = "Would you like to keep playing? (${"Y".color(Color.GREEN.rgb)})es/(${"N".color(Color.RED.rgb)})o?"
+                var playing: Continue?
+                do playing = Continue(input(again, scan)) while (playing == null)
+                when (playing) {
+                    Continue.YES -> continue@gameLoop
+                    Continue.NO -> break@gameLoop
+                }
             }
         }
     }
